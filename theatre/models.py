@@ -1,18 +1,41 @@
 from django.db import models
 from django.conf import settings
+from django.core.validators import RegexValidator
 
-from user.models import User
+
+actor_name_validator = RegexValidator(
+    regex=r"^[^\W\d_]+(?:['-][^\W\d_]+)*$",
+    message=(
+        "Name may contain only letters, hyphens, and apostrophes."
+    ),
+)
 
 
 class Actor(models.Model):
-    first_name = models.CharField(max_length=100)
-    last_name = models.CharField(max_length=100)
+    first_name = models.CharField(
+        max_length=100,
+        validators=[actor_name_validator]
+    )
+    last_name = models.CharField(
+        max_length=100,
+        validators=[actor_name_validator]
+    )
 
     class Meta:
         ordering = ["first_name", "last_name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["first_name", "last_name"],
+                name="unique_actor_full_name"
+            )
+        ]
 
-    def __str__(self):
+    @property
+    def full_name(self) -> str:
         return f"{self.first_name} {self.last_name}"
+
+    def __str__(self) -> str:
+        return self.full_name
 
 
 class Genre(models.Model):
