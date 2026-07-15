@@ -41,7 +41,15 @@ class ActorSerializer(serializers.ModelSerializer):
 class GenreSerializer(serializers.ModelSerializer):
     class Meta:
         model = Genre
-        fields ="__all__"
+        fields = ("id", "name")
+
+    def validate_name(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError(
+                "This field must not be empty."
+            )
+        return value
 
 
 class PlaySerializer(serializers.ModelSerializer):

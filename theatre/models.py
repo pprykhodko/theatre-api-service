@@ -11,6 +11,12 @@ actor_name_validator = RegexValidator(
 )
 
 
+genre_name_validator = RegexValidator(
+    regex=r"^[^\W\d_]+(?:[ -][^\W\d_]+)*$",
+    message="Genre name may contain only letters, spaces, and hyphens.",
+)
+
+
 class Actor(models.Model):
     first_name = models.CharField(
         max_length=100,
@@ -39,9 +45,16 @@ class Actor(models.Model):
 
 
 class Genre(models.Model):
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(
+        max_length=100,
+        unique=True,
+        validators=[genre_name_validator]
+    )
 
-    def __str__(self):
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self) -> str:
         return self.name
 
 
