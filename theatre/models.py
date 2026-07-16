@@ -10,10 +10,16 @@ actor_name_validator = RegexValidator(
     ),
 )
 
-
 genre_name_validator = RegexValidator(
     regex=r"^[^\W\d_]+(?:[ -][^\W\d_]+)*$",
     message="Genre name may contain only letters, spaces, and hyphens.",
+)
+
+play_title_validator = RegexValidator(
+    regex=r"^[\w\s'\":;,.!?()&-]+$",
+    message=(
+        "Title contains invalid characters."
+    ),
 )
 
 
@@ -59,15 +65,24 @@ class Genre(models.Model):
 
 
 class Play(models.Model):
-    title = models.CharField(max_length=255)
-    description = models.TextField(blank=True, default="")
-    actors = models.ManyToManyField(Actor, related_name="plays")
-    genres = models.ManyToManyField(Genre, related_name="plays")
+    title = models.CharField(
+        max_length=255,
+        validators=[play_title_validator]
+    )
+    description = models.TextField()
+    actors = models.ManyToManyField(
+        Actor,
+        related_name="plays"
+    )
+    genres = models.ManyToManyField(
+        Genre,
+        related_name="plays"
+    )
 
     class Meta:
         ordering = ["title"]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.title
 
 
