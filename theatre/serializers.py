@@ -28,9 +28,7 @@ class ActorSerializer(serializers.ModelSerializer):
             if not value:
                 raise serializers.ValidationError(
                     {
-                        field_name: (
-                            "This field must not be empty."
-                        )
+                        field_name: "This field must not be empty."
                     }
                 )
 
@@ -55,7 +53,40 @@ class GenreSerializer(serializers.ModelSerializer):
 class PlaySerializer(serializers.ModelSerializer):
     class Meta:
         model = Play
-        fields ="__all__"
+        fields = (
+            "id",
+            "title",
+            "description",
+            "actors",
+            "genres"
+        )
+
+    def validate(self, attrs):
+        for field_name in ("title", "description"):
+            if field_name not in attrs:
+                continue
+
+            value = attrs[field_name].strip()
+
+            if not value:
+                raise serializers.ValidationError(
+                    {
+                        field_name: "This field must not be empty."
+                    }
+                )
+
+            attrs[field_name] = value
+
+            if "actors" in attrs and not attrs["actors"]:
+                raise serializers.ValidationError(
+                    {"actors": "At least one actor is required."}
+                )
+
+            if "genres" in attrs and not attrs["genres"]:
+                raise serializers.ValidationError(
+                    {"genres": "At least one genre is required."}
+                )
+        return attrs
 
 
 class TheatreHallsSerializer(serializers.ModelSerializer):
