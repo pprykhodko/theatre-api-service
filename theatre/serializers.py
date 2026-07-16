@@ -70,23 +70,40 @@ class PlaySerializer(serializers.ModelSerializer):
 
             if not value:
                 raise serializers.ValidationError(
-                    {
-                        field_name: "This field must not be empty."
-                    }
+                    {field_name: "This field must not be empty."}
                 )
 
             attrs[field_name] = value
 
-            if "actors" in attrs and not attrs["actors"]:
-                raise serializers.ValidationError(
-                    {"actors": "At least one actor is required."}
-                )
+        if "actors" in attrs and not attrs["actors"]:
+            raise serializers.ValidationError(
+                {"actors": "At least one actor is required."}
+            )
 
-            if "genres" in attrs and not attrs["genres"]:
-                raise serializers.ValidationError(
-                    {"genres": "At least one genre is required."}
-                )
+        if "genres" in attrs and not attrs["genres"]:
+            raise serializers.ValidationError(
+                {"genres": "At least one genre is required."}
+            )
+
         return attrs
+
+
+class PlayListSerializer(PlaySerializer):
+    actors = serializers.SlugRelatedField(
+        many=True,
+        read_only=True,
+        slug_field="full_name",
+    )
+    genres = serializers.SlugRelatedField(
+        many=True,
+        read_only=True,
+        slug_field="name",
+    )
+
+
+class PlayDetailSerializer(PlaySerializer):
+    actors = ActorSerializer(many=True, read_only=True)
+    genres = GenreSerializer(many=True, read_only=True)
 
 
 class TheatreHallsSerializer(serializers.ModelSerializer):
