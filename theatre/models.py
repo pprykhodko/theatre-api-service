@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.core.validators import RegexValidator
+from django.db.models.functions import Lower
 
 
 actor_name_validator = RegexValidator(
@@ -10,16 +11,22 @@ actor_name_validator = RegexValidator(
     ),
 )
 
+actor_last_name_validator = RegexValidator(
+    regex=r"^[^\W\d_]+(?:[ '-][^\W\d_]+)*$",
+    message=(
+        "Last name may contain only letters, spaces, hyphens, "
+        "and apostrophes."
+    ),
+)
+
 genre_name_validator = RegexValidator(
     regex=r"^[^\W\d_]+(?:[ -][^\W\d_]+)*$",
     message="Genre name may contain only letters, spaces, and hyphens.",
 )
 
 play_title_validator = RegexValidator(
-    regex=r"^[\w\s'\":;,.!?()&-]+$",
-    message=(
-        "Title contains invalid characters."
-    ),
+    regex=r"^[^\W\d_]+(?: [^\W\d_]+)*$",
+    message="Title may contain only letters and single spaces.",
 )
 
 
@@ -30,14 +37,15 @@ class Actor(models.Model):
     )
     last_name = models.CharField(
         max_length=100,
-        validators=[actor_name_validator]
+        validators=[actor_last_name_validator]
     )
 
     class Meta:
         ordering = ["first_name", "last_name"]
         constraints = [
             models.UniqueConstraint(
-                fields=["first_name", "last_name"],
+                Lower("first_name"),
+                Lower("last_name"),
                 name="unique_actor_full_name"
             )
         ]
@@ -53,12 +61,17 @@ class Actor(models.Model):
 class Genre(models.Model):
     name = models.CharField(
         max_length=100,
-        unique=True,
         validators=[genre_name_validator]
     )
 
     class Meta:
         ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                Lower("name"),
+                name="unique_genre_name"
+            )
+        ]
 
     def __str__(self) -> str:
         return self.name

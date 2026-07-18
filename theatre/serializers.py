@@ -1,6 +1,4 @@
 from rest_framework import serializers
-from rest_framework.validators import UniqueTogetherValidator
-
 from theatre.models import *
 
 
@@ -10,13 +8,6 @@ class ActorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Actor
         fields =("id", "first_name", "last_name", "full_name")
-        validators = [
-            UniqueTogetherValidator(
-                queryset=Actor.objects.all(),
-                fields=("first_name", "last_name"),
-                message="This actor already exists.",
-            )
-        ]
 
     def validate(self, attrs):
         for field_name in ("first_name", "last_name"):
@@ -33,6 +24,29 @@ class ActorSerializer(serializers.ModelSerializer):
                 )
 
             attrs[field_name] = value
+
+        first_name = attrs.get(
+            "first_name",
+            getattr(self.instance, "first_name", None)
+        )
+        last_name = attrs.get(
+            "last_name",
+            getattr(self.instance, "last_name", None)
+        )
+
+        if first_name is not None and last_name is not None:
+            actors = Actor.objects.filter(
+                first_name__iexact=first_name,
+                last_name__iexact=last_name,
+            )
+
+            if self.instance is not None:
+                actors = actors.exclude(pk=self.instance.pk)
+
+            if actors.exists():
+                raise serializers.ValidationError(
+                    {"non_field_errors": ["This actor already exists."]}
+                )
         return attrs
 
 
@@ -43,9 +57,20 @@ class GenreSerializer(serializers.ModelSerializer):
 
     def validate_name(self, value):
         value = value.strip()
+
         if not value:
             raise serializers.ValidationError(
                 "This field must not be empty."
+            )
+
+        genres = Genre.objects.filter(name__iexact=value)
+
+        if self.instance is not None:
+            genres = genres.exclude(pk=self.instance.pk)
+
+        if genres.exists():
+            raise serializers.ValidationError(
+                "This genre already exists."
             )
         return value
 
