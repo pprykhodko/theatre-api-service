@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from django.core.validators import RegexValidator
+from django.core.validators import RegexValidator, MinValueValidator
 from django.db.models.functions import Lower
 
 
@@ -27,6 +27,11 @@ genre_name_validator = RegexValidator(
 play_title_validator = RegexValidator(
     regex=r"^[^\W\d_]+(?: [^\W\d_]+)*$",
     message="Title may contain only letters and single spaces.",
+)
+
+theatre_hall_name_validator = RegexValidator(
+    regex=r"^[^\W\d_]+(?:[ '-][^\W\d_]+)*$",
+    message="Theatre hall name may contain only letters, spaces, hyphens and apostrophes.",
 )
 
 
@@ -99,13 +104,26 @@ class Play(models.Model):
         return self.title
 
 
-class TheatreHalls(models.Model):
-    name = models.CharField(max_length=100, unique=True)
-    rows = models.IntegerField()
-    seats_in_rows = models.IntegerField()
+class TheatreHall(models.Model):
+    name = models.CharField(
+        max_length=100,
+        validators=[theatre_hall_name_validator]
+    )
+    rows = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    seats_in_row = models.PositiveIntegerField(validators=[MinValueValidator(1)])
 
     class Meta:
         ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                Lower("name"),
+                name="unique_theatre_hall_name"
+            )
+        ]
+
+    @property
+    def capacity(self) -> int:
+        return self.rows * self.seats_in_row
 
     def __str__(self):
         return self.name
@@ -118,7 +136,7 @@ class Performance(models.Model):
         related_name="performances"
     )
     theatre_hall = models.ForeignKey(
-        TheatreHalls,
+        TheatreHall,
         on_delete=models.CASCADE,
         related_name="performances"
     )

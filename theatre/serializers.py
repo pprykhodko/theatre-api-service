@@ -72,6 +72,7 @@ class GenreSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "This genre already exists."
             )
+
         return value
 
 
@@ -131,10 +132,30 @@ class PlayDetailSerializer(PlaySerializer):
     genres = GenreSerializer(many=True, read_only=True)
 
 
-class TheatreHallsSerializer(serializers.ModelSerializer):
+class TheatreHallSerializer(serializers.ModelSerializer):
     class Meta:
-        model = TheatreHalls
-        fields ="__all__"
+        model = TheatreHall
+        fields = ("id", "name", "rows", "seats_in_row", "capacity")
+
+    def validate_name(self, value):
+        value = value.strip()
+
+        if not value:
+            raise serializers.ValidationError(
+                "This field must not be empty."
+            )
+
+        theatre_hall = TheatreHall.objects.filter(name__iexact=value)
+
+        if self.instance is not None:
+            theatre_hall = theatre_hall.exclude(pk=self.instance.pk)
+
+        if theatre_hall.exists():
+            raise serializers.ValidationError(
+                "This hall already exists."
+            )
+
+        return value
 
 
 class PerformanceSerializer(serializers.ModelSerializer):
