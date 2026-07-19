@@ -1,4 +1,6 @@
 from rest_framework import serializers
+from django.utils import timezone
+
 from theatre.models import *
 
 
@@ -135,7 +137,13 @@ class PlayDetailSerializer(PlaySerializer):
 class TheatreHallSerializer(serializers.ModelSerializer):
     class Meta:
         model = TheatreHall
-        fields = ("id", "name", "rows", "seats_in_row", "capacity")
+        fields = (
+            "id",
+            "name",
+            "rows",
+            "seats_in_row",
+            "capacity"
+        )
 
     def validate_name(self, value):
         value = value.strip()
@@ -161,7 +169,38 @@ class TheatreHallSerializer(serializers.ModelSerializer):
 class PerformanceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Performance
-        fields ="__all__"
+        fields = (
+            "id",
+            "play",
+            "theatre_hall",
+            "show_time"
+        )
+
+    def validate_show_time(self, value):
+        if value <= timezone.now():
+            raise serializers.ValidationError(
+                "Show time must be in the future."
+            )
+        return value
+
+
+class PerformanceListSerializer(PerformanceSerializer):
+    play = serializers.SlugRelatedField(
+        many=False,
+        read_only=True,
+        slug_field="title",
+    )
+
+    theatre_hall = serializers.SlugRelatedField(
+        many=False,
+        read_only=True,
+        slug_field="name",
+    )
+
+
+class PerformanceDetailSerializer(PerformanceSerializer):
+    play = PlayListSerializer(read_only=True)
+    theatre_hall = TheatreHallSerializer(many=False, read_only=True)
 
 
 class ReservationSerializer(serializers.ModelSerializer):

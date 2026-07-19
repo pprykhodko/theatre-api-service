@@ -144,6 +144,12 @@ class Performance(models.Model):
 
     class Meta:
         ordering = ["show_time"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["theatre_hall", "show_time"],
+                name="unique_hall_performance"
+            )
+        ]
 
     def __str__(self):
         return f"{self.play.title} at {self.show_time}"
