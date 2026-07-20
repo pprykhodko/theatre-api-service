@@ -31,7 +31,8 @@ play_title_validator = RegexValidator(
 
 theatre_hall_name_validator = RegexValidator(
     regex=r"^[^\W\d_]+(?:[ '-][^\W\d_]+)*$",
-    message="Theatre hall name may contain only letters, spaces, hyphens and apostrophes.",
+    message="Theatre hall name may contain only "
+            "letters, spaces, hyphens and apostrophes.",
 )
 
 
@@ -109,8 +110,12 @@ class TheatreHall(models.Model):
         max_length=100,
         validators=[theatre_hall_name_validator]
     )
-    rows = models.PositiveIntegerField(validators=[MinValueValidator(1)])
-    seats_in_row = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    rows = models.PositiveIntegerField(
+        validators=[MinValueValidator(1)]
+    )
+    seats_in_row = models.PositiveIntegerField(
+        validators=[MinValueValidator(1)]
+    )
 
     class Meta:
         ordering = ["name"]
@@ -171,8 +176,12 @@ class Reservation(models.Model):
 
 
 class Ticket(models.Model):
-    row = models.IntegerField()
-    seat = models.IntegerField()
+    row = models.PositiveIntegerField(
+        validators=[MinValueValidator(1)]
+    )
+    seat = models.PositiveIntegerField(
+        validators=[MinValueValidator(1)]
+    )
     performance = models.ForeignKey(
         Performance,
         on_delete=models.CASCADE,
@@ -183,6 +192,14 @@ class Ticket(models.Model):
         on_delete=models.CASCADE,
         related_name="tickets"
     )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["performance", "row", "seat"],
+                name="unique_performance_seat"
+            )
+        ]
 
     def __str__(self):
         return (
