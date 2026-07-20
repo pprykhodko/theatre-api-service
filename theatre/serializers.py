@@ -153,25 +153,48 @@ class TheatreHallSerializer(serializers.ModelSerializer):
             "capacity"
         )
 
-    def validate_name(self, value):
-        value = value.strip()
+    def validate(self, attrs):
+        errors = {}
 
-        if not value:
-            raise serializers.ValidationError(
-                "This field must not be empty."
-            )
+        if "name" in attrs:
+            name = attrs["name"].strip()
 
-        theatre_hall = TheatreHall.objects.filter(name__iexact=value)
+            if not name:
+                errors["name"] = "This field must not be empty."
+            else:
+                theatre_halls = TheatreHall.objects.filter(
+                    name__iexact=name
+                )
+                if self.instance is not None:
+                    theatre_halls = theatre_halls.exclude(
+                        pk=self.instance.pk
+                    )
+                if theatre_halls.exists():
+                    errors["name"] = "This hall already exists."
+
+                attrs["name"] = name
 
         if self.instance is not None:
-            theatre_hall = theatre_hall.exclude(pk=self.instance.pk)
-
-        if theatre_hall.exists():
-            raise serializers.ValidationError(
-                "This hall already exists."
+            rows = attrs.get("rows", self.instance.rows)
+            seats_in_row = attrs.get(
+                "seats_in_row",
+                self.instance.seats_in_row
             )
 
-        return value
+            if rows != self.instance.rows:
+                errors["rows"] = (
+                    "The number of rows cannot be changed."
+                )
+
+            if seats_in_row != self.instance.seats_in_row:
+                errors["seats_in_row"] = (
+                    "The number of seats in a row cannot be changed."
+                )
+
+        if errors:
+            raise serializers.ValidationError(errors)
+
+        return attrs
 
 
 class PerformanceSerializer(serializers.ModelSerializer):
