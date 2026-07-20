@@ -1,10 +1,11 @@
 from rest_framework import serializers, viewsets
+from django.db.models import Count, F
 
 from theatre.models import (
     Actor,
     Genre,
     Play,
-    TheatreHall, Performance
+    TheatreHall, Performance, Ticket
 )
 from theatre.serializers import (
     ActorSerializer,
@@ -12,7 +13,10 @@ from theatre.serializers import (
     PlaySerializer,
     PlayListSerializer,
     PlayDetailSerializer,
-    TheatreHallSerializer, PerformanceSerializer, PerformanceListSerializer, PerformanceDetailSerializer
+    TheatreHallSerializer,
+    PerformanceSerializer,
+    PerformanceListSerializer,
+    PerformanceDetailSerializer, TicketSerializer
 )
 
 
@@ -79,28 +83,42 @@ class TheatreHallViewSet(viewsets.ModelViewSet):
 
 
 class PerformanceViewSet(viewsets.ModelViewSet):
-    queryset = (
-        Performance.objects
-        .select_related("play", "theatre_hall")
-        .prefetch_related("play__actors", "play__genres")
+    queryset = Performance.objects.select_related(
+        "play",
+        "theatre_hall"
     )
     serializer_class = PerformanceSerializer
 
     def get_queryset(self):
+        queryset = super().get_queryset()
+
+        if self.action in ("list", "retrieve"):
+            queryset = queryset.annotate(
+                tickets_available=(
+                    F("theatre_hall__rows")
+                    * F("theatre_hall__seats_in_row")
+                    - Count("tickets")
+                )
+            )
+
+        if self.action == "retrieve":
+            queryset = queryset.prefetch_related(
+                "play__actors",
+                "play__genres"
+            )
+
         play = self.request.query_params.get("play")
         theatre_hall = self.request.query_params.get("theatre_hall")
 
-        queryset = super().get_queryset()
-
         if play:
-            plays_ids = _params_to_ints(play, "play")
-            queryset = queryset.filter(play__id__in=plays_ids)
+            play_ids = _params_to_ints(play, "play")
+            queryset = queryset.filter(play_id__in=play_ids)
 
         if theatre_hall:
             theatre_hall_ids = _params_to_ints(theatre_hall, "theatre_hall")
-            queryset = queryset.filter(theatre_hall__id__in=theatre_hall_ids)
+            queryset = queryset.filter(theatre_hall_id__in=theatre_hall_ids)
 
-        return queryset.distinct()
+        return queryset
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -108,3 +126,8 @@ class PerformanceViewSet(viewsets.ModelViewSet):
         if self.action == "retrieve":
             return PerformanceDetailSerializer
         return PerformanceSerializer
+
+
+class TicketViewSet(viewsets.ModelViewSet):
+    queryset = Ticket.objects.all()
+    serializer_class = TicketSerializer
