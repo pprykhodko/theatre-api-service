@@ -1,7 +1,15 @@
 from rest_framework import serializers
 from django.utils import timezone
 
-from theatre.models import *
+from theatre.models import (
+    Actor,
+    Genre,
+    Play,
+    TheatreHall,
+    Performance,
+    Ticket,
+    Reservation
+)
 
 
 class ActorSerializer(serializers.ModelSerializer):
@@ -9,7 +17,7 @@ class ActorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Actor
-        fields =("id", "first_name", "last_name", "full_name")
+        fields = ("id", "first_name", "last_name", "full_name")
 
     def validate(self, attrs):
         for field_name in ("first_name", "last_name"):
@@ -167,13 +175,16 @@ class TheatreHallSerializer(serializers.ModelSerializer):
 
 
 class PerformanceSerializer(serializers.ModelSerializer):
+    tickets_available = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = Performance
         fields = (
             "id",
             "play",
             "theatre_hall",
-            "show_time"
+            "show_time",
+            "tickets_available"
         )
 
     def validate_show_time(self, value):
@@ -186,15 +197,12 @@ class PerformanceSerializer(serializers.ModelSerializer):
 
 class PerformanceListSerializer(PerformanceSerializer):
     play = serializers.SlugRelatedField(
-        many=False,
         read_only=True,
-        slug_field="title",
+        slug_field="title"
     )
-
     theatre_hall = serializers.SlugRelatedField(
-        many=False,
         read_only=True,
-        slug_field="name",
+        slug_field="name"
     )
 
 
@@ -206,10 +214,44 @@ class PerformanceDetailSerializer(PerformanceSerializer):
 class ReservationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Reservation
-        fields ="__all__"
+        fields = "__all__"
 
 
-class TickSerializer(serializers.ModelSerializer):
+class TicketSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ticket
-        fields ="__all__"
+        fields = "__all__"
+
+    def validate(self, attrs):
+        performance = attrs.get(
+            "performance",
+            getattr(self.instance, "performance", None)
+        )
+        row = attrs.get("row", getattr(self.instance, "row", None))
+        seat = attrs.get("seat", getattr(self.instance, "seat", None))
+
+        theatre_hall = performance.theatre_hall
+
+        if row < 1 or row > theatre_hall.rows:
+            raise serializers.ValidationError({
+                "row":
+                    f"Row must be in range from 1 to {theatre_hall.rows}."
+            }
+            )
+
+        if seat < 1 or seat > theatre_hall.seats_in_row:
+            raise serializers.ValidationError({
+                "seat":
+                    f"Seat must be in range from "
+                    f"1 to {theatre_hall.seats_in_row}."
+            }
+            )
+
+        if performance.show_time <= timezone.now():
+            raise serializers.ValidationError({
+                "performance":
+                    "Cannot book tickets for a past performance."
+            }
+            )
+
+        return attrs
