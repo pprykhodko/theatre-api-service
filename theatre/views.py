@@ -1,11 +1,15 @@
-from rest_framework import serializers, viewsets
 from django.db.models import Count, F
+from django.db.models.deletion import ProtectedError
+from rest_framework import mixins, serializers, viewsets
+from rest_framework.permissions import IsAuthenticated
 
 from theatre.models import (
     Actor,
     Genre,
     Play,
-    TheatreHall, Performance, Ticket
+    TheatreHall,
+    Performance,
+    Reservation,
 )
 from theatre.serializers import (
     ActorSerializer,
@@ -16,7 +20,8 @@ from theatre.serializers import (
     TheatreHallSerializer,
     PerformanceSerializer,
     PerformanceListSerializer,
-    PerformanceDetailSerializer, TicketSerializer
+    PerformanceDetailSerializer,
+    ReservationSerializer,
 )
 
 
@@ -35,6 +40,20 @@ def _params_to_ints(value, param_name):
     return ids
 
 
+class ProtectBookedObjectDeletionMixin:
+    protected_delete_message = (
+        "This object cannot be deleted because tickets have already been sold."
+    )
+
+    def perform_destroy(self, instance):
+        try:
+            instance.delete()
+        except ProtectedError:
+            raise serializers.ValidationError({
+                "detail": self.protected_delete_message
+            })
+
+
 class ActorViewSet(viewsets.ModelViewSet):
     queryset = Actor.objects.all()
     serializer_class = ActorSerializer
@@ -45,7 +64,7 @@ class GenreViewSet(viewsets.ModelViewSet):
     serializer_class = GenreSerializer
 
 
-class PlayViewSet(viewsets.ModelViewSet):
+class PlayViewSet(ProtectBookedObjectDeletionMixin, viewsets.ModelViewSet):
     queryset = Play.objects.prefetch_related("genres", "actors")
     serializer_class = PlaySerializer
 
@@ -77,12 +96,22 @@ class PlayViewSet(viewsets.ModelViewSet):
         return PlaySerializer
 
 
-class TheatreHallViewSet(viewsets.ModelViewSet):
+class TheatreHallViewSet(
+    ProtectBookedObjectDeletionMixin,
+    viewsets.ModelViewSet,
+):
     queryset = TheatreHall.objects.all()
     serializer_class = TheatreHallSerializer
 
 
-class PerformanceViewSet(viewsets.ModelViewSet):
+class PerformanceViewSet(
+    ProtectBookedObjectDeletionMixin,
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
     queryset = Performance.objects.select_related(
         "play",
         "theatre_hall"
@@ -118,7 +147,7 @@ class PerformanceViewSet(viewsets.ModelViewSet):
             theatre_hall_ids = _params_to_ints(theatre_hall, "theatre_hall")
             queryset = queryset.filter(theatre_hall_id__in=theatre_hall_ids)
 
-        return queryset
+        return queryset.order_by("show_time", "pk")
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -128,6 +157,27 @@ class PerformanceViewSet(viewsets.ModelViewSet):
         return PerformanceSerializer
 
 
-class TicketViewSet(viewsets.ModelViewSet):
-    queryset = Ticket.objects.all()
-    serializer_class = TicketSerializer
+class ReservationViewSet(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet,
+):
+    queryset = (
+        Reservation.objects
+        .select_related("user")
+        .prefetch_related("tickets")
+    )
+    serializer_class = ReservationSerializer
+    permission_classes = (IsAuthenticated,)
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        if self.request.user.is_staff:
+            return queryset
+
+        return queryset.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
