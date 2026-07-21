@@ -1,5 +1,6 @@
-from rest_framework import serializers
+from django.db import IntegrityError, transaction
 from django.utils import timezone
+from rest_framework import serializers
 
 from theatre.models import (
     Actor,
@@ -111,15 +112,26 @@ class PlaySerializer(serializers.ModelSerializer):
 
             attrs[field_name] = value
 
+        if "title" in attrs:
+            plays = Play.objects.filter(title__iexact=attrs["title"])
+
+            if self.instance is not None:
+                plays = plays.exclude(pk=self.instance.pk)
+
+            if plays.exists():
+                raise serializers.ValidationError({
+                    "title": "This play already exists."
+                })
+
         if "actors" in attrs and not attrs["actors"]:
-            raise serializers.ValidationError(
-                {"actors": "At least one actor is required."}
-            )
+            raise serializers.ValidationError({
+                "actors": "At least one actor is required."
+            })
 
         if "genres" in attrs and not attrs["genres"]:
-            raise serializers.ValidationError(
-                {"genres": "At least one genre is required."}
-            )
+            raise serializers.ValidationError({
+                "genres": "At least one genre is required."
+            })
 
         return attrs
 
@@ -234,16 +246,11 @@ class PerformanceDetailSerializer(PerformanceSerializer):
     theatre_hall = TheatreHallSerializer(many=False, read_only=True)
 
 
-class ReservationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Reservation
-        fields = "__all__"
-
-
 class TicketSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ticket
-        fields = "__all__"
+        fields = ("id", "row", "seat", "performance")
+        read_only_fields = ("id",)
 
     def validate(self, attrs):
         performance = attrs.get(
@@ -259,22 +266,74 @@ class TicketSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 "row":
                     f"Row must be in range from 1 to {theatre_hall.rows}."
-            }
-            )
+            })
 
         if seat < 1 or seat > theatre_hall.seats_in_row:
             raise serializers.ValidationError({
                 "seat":
                     f"Seat must be in range from "
                     f"1 to {theatre_hall.seats_in_row}."
-            }
-            )
+            })
 
         if performance.show_time <= timezone.now():
             raise serializers.ValidationError({
                 "performance":
                     "Cannot book tickets for a past performance."
-            }
-            )
+            })
 
         return attrs
+
+
+class ReservationSerializer(serializers.ModelSerializer):
+    tickets = TicketSerializer(
+        many=True,
+        allow_empty=False
+    )
+    user = serializers.SlugRelatedField(
+        read_only=True,
+        slug_field="email"
+    )
+
+    class Meta:
+        model = Reservation
+        fields = ("id", "user", "tickets", "created_at")
+        read_only_fields = ("id", "created_at")
+
+    def validate(self, attrs):
+        tickets = attrs.get("tickets", [])
+        selected_seats = set()
+
+        for ticket in tickets:
+            seat = (
+                ticket["performance"].pk,
+                ticket["row"],
+                ticket["seat"],
+            )
+
+            if seat in selected_seats:
+                raise serializers.ValidationError({
+                    "tickets": "The same seat cannot be selected twice."
+                })
+
+            selected_seats.add(seat)
+
+        return attrs
+
+    def create(self, validated_data):
+        tickets_data = validated_data.pop("tickets")
+
+        try:
+            with transaction.atomic():
+                reservation = Reservation.objects.create(**validated_data)
+
+                Ticket.objects.bulk_create([
+                    Ticket(reservation=reservation, **ticket_data)
+                    for ticket_data in tickets_data
+                ])
+
+        except IntegrityError:
+            raise serializers.ValidationError({
+                "tickets": "One or more selected seats are already taken."
+            })
+
+        return reservation
