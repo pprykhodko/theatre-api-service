@@ -100,6 +100,12 @@ class Play(models.Model):
 
     class Meta:
         ordering = ["title"]
+        constraints = [
+            models.UniqueConstraint(
+                Lower("title"),
+                name="unique_play_title"
+            )
+        ]
 
     def __str__(self) -> str:
         return self.title
@@ -184,7 +190,7 @@ class Ticket(models.Model):
     )
     performance = models.ForeignKey(
         Performance,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="tickets"
     )
     reservation = models.ForeignKey(
