@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+from datetime import timedelta
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -20,7 +21,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-s*uz&o$s)k6v$i-w2c_vvchbt0q+zit3v&o^-#!@ggjmc(+l=r'
+SECRET_KEY = (
+    "django-insecure-s*uz&o$s)k6v$i-w2c_vvchbt0q+zit3v"
+    "&o^-#!@ggjmc(+l=r"
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -44,10 +48,22 @@ INSTALLED_APPS = [
 ]
 
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": (
+        "theatre.permissions.IsAdminOrIfAuthenticatedReadOnly",
+    ),
     "DEFAULT_PAGINATION_CLASS": (
         "rest_framework.pagination.PageNumberPagination"
     ),
-    "PAGE_SIZE": 10,
+    "PAGE_SIZE": 5,
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=3),
+    "CHECK_REVOKE_TOKEN": False,
 }
 
 MIDDLEWARE = [
