@@ -122,7 +122,7 @@ class TheatreHallViewSet(
 
         queryset = super().get_queryset()
 
-        if min_capacity:
+        if min_capacity is not None:
             try:
                 min_capacity = int(min_capacity)
             except (TypeError, ValueError):
