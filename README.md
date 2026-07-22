@@ -78,13 +78,39 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. Apply migrations
+### 4. Configure environment variables
+
+Create a local `.env` file from the provided example.
+
+On Windows PowerShell:
+
+```powershell
+Copy-Item .env.sample .env
+```
+
+On Linux or macOS:
+
+```bash
+cp .env.sample .env
+```
+
+Replace `THEATRE_SECRET_KEY` in `.env` with a secure secret value.
+
+Available variables:
+
+| Variable | Description |
+|---|---|
+| `THEATRE_SECRET_KEY` | Secret key used by Django |
+| `THEATRE_DEBUG` | Enables or disables debug mode |
+| `THEATRE_ALLOWED_HOSTS` | Comma-separated list of allowed hosts |
+
+### 5. Apply migrations
 
 ```bash
 python manage.py migrate
 ```
 
-### 5. Create an administrator
+### 6. Create an administrator
 
 ```bash
 python manage.py createsuperuser
@@ -92,7 +118,7 @@ python manage.py createsuperuser
 
 The project uses email instead of username for authentication.
 
-### 6. Run the development server
+### 7. Run the development server
 
 ```bash
 python manage.py runserver
