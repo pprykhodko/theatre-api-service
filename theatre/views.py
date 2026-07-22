@@ -1,5 +1,10 @@
 from django.db.models import Count, F
 from django.db.models.deletion import ProtectedError
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiTypes,
+    extend_schema,
+)
 from rest_framework import mixins, serializers, viewsets
 from rest_framework.permissions import IsAuthenticated
 
@@ -54,6 +59,26 @@ class ProtectBookedObjectDeletionMixin:
             })
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="first_name",
+            type=OpenApiTypes.STR,
+            description=(
+                    "Filter actors by a case-insensitive partial "
+                    "first-name match."
+            ),
+        ),
+        OpenApiParameter(
+            name="last_name",
+            type=OpenApiTypes.STR,
+            description=(
+                    "Filter actors by a case-insensitive partial "
+                    "last-name match."
+            ),
+        ),
+    ]
+)
 class ActorViewSet(viewsets.ModelViewSet):
     queryset = Actor.objects.all()
     serializer_class = ActorSerializer
@@ -78,6 +103,27 @@ class GenreViewSet(viewsets.ModelViewSet):
     serializer_class = GenreSerializer
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="title",
+            type=OpenApiTypes.STR,
+            description=(
+                    "Filter plays by a case-insensitive partial title match."
+            ),
+        ),
+        OpenApiParameter(
+            name="genres",
+            type=OpenApiTypes.STR,
+            description="Filter by comma-separated genre IDs.",
+        ),
+        OpenApiParameter(
+            name="actors",
+            type=OpenApiTypes.STR,
+            description="Filter by comma-separated actor IDs.",
+        ),
+    ]
+)
 class PlayViewSet(ProtectBookedObjectDeletionMixin, viewsets.ModelViewSet):
     queryset = Play.objects.prefetch_related("genres", "actors")
     serializer_class = PlaySerializer
@@ -110,6 +156,18 @@ class PlayViewSet(ProtectBookedObjectDeletionMixin, viewsets.ModelViewSet):
         return PlaySerializer
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="min_capacity",
+            type=OpenApiTypes.INT,
+            description=(
+                    "Return halls whose capacity is greater than or equal "
+                    "to this positive integer."
+            ),
+        ),
+    ]
+)
 class TheatreHallViewSet(
     ProtectBookedObjectDeletionMixin,
     viewsets.ModelViewSet,
@@ -144,6 +202,20 @@ class TheatreHallViewSet(
         return queryset.distinct()
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="play",
+            type=OpenApiTypes.STR,
+            description="Filter by comma-separated play IDs.",
+        ),
+        OpenApiParameter(
+            name="theatre_hall",
+            type=OpenApiTypes.STR,
+            description="Filter by comma-separated theatre hall IDs.",
+        ),
+    ]
+)
 class PerformanceViewSet(
     ProtectBookedObjectDeletionMixin,
     mixins.ListModelMixin,
