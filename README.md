@@ -27,7 +27,8 @@ The API provides JWT authentication, role-based permissions, filtering, paginati
 - Django REST Framework
 - Simple JWT
 - drf-spectacular
-- SQLite
+- SQLite / PostgreSQL
+- Docker
 - Flake8
 
 ## Database structure
@@ -129,6 +130,43 @@ The API will be available at:
 ```text
 http://127.0.0.1:8000/
 ```
+
+## Running with Docker
+
+Docker Compose runs the Django application with PostgreSQL.
+
+Create `.env` from the example file if it does not exist:
+
+```bash
+cp .env.sample .env
+```
+
+Replace the secret key and database password in `.env`, then build and
+start the containers:
+
+```bash
+docker compose up --build
+```
+
+The API will be available at:
+
+```text
+http://127.0.0.1:8000/
+```
+
+Create an administrator inside the running application container:
+
+```bash
+docker compose exec app python manage.py createsuperuser
+```
+
+Stop the containers:
+
+```bash
+docker compose down
+```
+
+The PostgreSQL data is stored in the `postgres_data` Docker volume.
 
 ## Authentication
 
