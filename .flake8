@@ -4,3 +4,4 @@ exclude =
     __pycache__,
     venv,
     */migrations/*
+    theatre_service/settings.py
