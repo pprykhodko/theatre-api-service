@@ -117,6 +117,32 @@ class TheatreHallViewSet(
     queryset = TheatreHall.objects.all()
     serializer_class = TheatreHallSerializer
 
+    def get_queryset(self):
+        min_capacity = self.request.query_params.get("min_capacity")
+
+        queryset = super().get_queryset()
+
+        if min_capacity:
+            try:
+                min_capacity = int(min_capacity)
+            except (TypeError, ValueError):
+                raise serializers.ValidationError({
+                    "min_capacity": "Enter a positive integer."
+                })
+
+            if min_capacity <= 0:
+                raise serializers.ValidationError({
+                    "min_capacity": "Enter a positive integer."
+                })
+
+            queryset = queryset.annotate(
+                calculated_capacity=(
+                    F("rows") * F("seats_in_row")
+                )
+            ).filter(calculated_capacity__gte=min_capacity)
+
+        return queryset.distinct()
+
 
 class PerformanceViewSet(
     ProtectBookedObjectDeletionMixin,
