@@ -374,3 +374,36 @@ The API validates that:
 - the seat exists in the selected row;
 - the seat has not already been reserved;
 - the same seat is not included twice in one request.
+
+## Demo
+
+### Actor
+
+![Actor List](demo/actor_list.png)
+
+![Actor Instance](demo/actor_instance.png)
+
+### Genre
+
+![Genre List](demo/genre_list.png)
+
+![Genre Instance](demo/genre_instance.png)
+
+
+### Play
+
+![Play List](demo/play_list.png)
+
+![Play Instance](demo/play_instance.png)
+
+### Theatre Hall
+
+![Theatre Hall List](demo/theatre_hall_list.png)
+
+### Performance
+
+![Performance List](demo/performance_list.png)
+
+### Reservation
+
+![Reservation List](demo/reservation_list.png)
